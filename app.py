@@ -14,7 +14,7 @@ if submitted and user_input:
     st.info("Generating your website... please wait.")
     with st.spinner("Building step by step..."):
         steps = []
-        for _ in range(50):  # Limit loop to prevent infinite actions
+        for _ in range(50): 
             result = handle_input(user_input)
             steps.append(result)
             st.write(f"**[{result['step']}]**: {result['content']}")
