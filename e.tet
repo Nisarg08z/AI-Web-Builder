@@ -1,3 +1,73 @@
+app.py
+
+import streamlit as st
+import os
+import webbrowser
+import shutil
+import tempfile
+
+from ai_agent import handle_input
+from utils.file_utils import zip_project, delete_file, delete_generated_folder
+
+st.set_page_config(page_title="AI Web Builder", layout="wide")
+
+st.title("🛠️ AI-Powered Website Builder")
+
+# Action buttons
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("🗑️ Delete Existing Website"):
+        if delete_generated_folder():
+            st.success("Deleted generated website.")
+        else:
+            st.warning("No generated folder found.")
+
+with col2:
+    if st.button("🌐 Open Website in New Tab"):
+        st.info("Starting development server...")
+        with st.spinner("Running..."):
+            response = handle_input("Start development server")
+            st.write(f"**[{response['step']}]**: {response['content']}")
+        
+        # You can optionally set a frontend path based on the project structure
+        frontend_path = "http://localhost:5173"  # Assuming Vite dev server
+        webbrowser.open_new_tab(frontend_path)
+
+# Form for prompt input
+with st.form("prompt_form"):
+    user_input = st.text_area("Enter your website idea or request", height=200)
+    submitted = st.form_submit_button("Build Website")
+
+# If submitted
+if submitted and user_input:
+    # Delete old website
+    delete_generated_folder()
+
+    st.info("Generating your website... please wait.")
+    with st.spinner("Building step by step..."):
+        steps = []
+        for _ in range(50):
+            result = handle_input(user_input)
+            steps.append(result)
+            st.write(f"**[{result['step']}]**: {result['content']}")
+            if result["step"] == "output":
+                break
+
+        # Create temporary zip
+        temp_dir = tempfile.gettempdir()
+        zip_path = zip_project(folder="generated", output_dir=temp_dir)
+        st.success("Website generation complete!")
+
+        with open(zip_path, "rb") as f:
+            st.download_button(
+                label="📦 Download Website ZIP",
+                data=f,
+                file_name=os.path.basename(zip_path),
+                mime="application/zip"
+            )
+
+ai_agent.py
+
 import os
 import json
 from openai import OpenAI
@@ -196,6 +266,7 @@ SYSTEM_PROMPT = """
     }}
     
     ### Rules:
+    - create all the folder and file in generated folder
     - Put all the code in files using a proper document format
     - Follow the exact JSON Output Format.
     - Each output must represent only one step at a time.
@@ -204,11 +275,6 @@ SYSTEM_PROMPT = """
     - Use "content" to explain what you are doing at each step.
     - Think clearly before taking action.
     
-    ### Important:
-    - All files and folders for the generated project must be created inside the `generated/` folder in the current directory.
-    - When creating folders, prefix paths with `generated/` (e.g., `generated/my-app`).
-    - When running commands that create projects, run them inside the `generated/` folder (e.g., `cd generated && npm create vite@latest my-app`).
-   
     ### Start development server
     If the user asks to run the website
     - For HTML, CSS, JS website
@@ -281,6 +347,7 @@ SYSTEM_PROMPT = """
     {{"step": "output", "content": "Full-stack Todo App created with React frontend and Express + MongoDB backend. CRUD operations fully functional with database integration."}}
 """
 messages = [
+    
     {"role": "system", "content": SYSTEM_PROMPT}
 ]
 
@@ -329,11 +396,52 @@ def handle_input(query: str):
                 filename = content.get("filename")
                 code = content.get("code")
                 if filename and code:
-                    if not filename.startswith("generated/"):
-                        filename = os.path.join("generated", filename)
                     save_file(filename, code)
                     return {"step": "output", "content": f"File saved: {filename}"}
             return {"step": "output", "content": str(content)}
 
         else:
             return {"step": "error", "content": f"Unknown step '{step}'"}
+
+
+file_utils.py
+
+import os
+from pathlib import Path
+import shutil
+import tempfile
+
+def save_file(path: str, content: str):
+    filepath = Path(f"generated/{path}")
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    filepath.write_text(content, encoding='utf-8')
+
+def zip_project(folder="generated", output_name="generated_site", output_dir=None):
+    output_dir = output_dir or folder
+    output_path = os.path.join(output_dir, output_name)
+    shutil.make_archive(output_path, 'zip', folder)
+    return f"{output_path}.zip"
+
+def delete_file(path):
+    try:
+        os.remove(path)
+        return True
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+        return False
+
+def delete_generated_folder(folder="generated"):
+    try:
+        if os.path.exists(folder):
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            return True
+        return False
+    except Exception as e:
+        print(f"Error clearing generated folder: {e}")
+        return False
+

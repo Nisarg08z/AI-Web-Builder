@@ -21,11 +21,15 @@ with col1:
             st.warning("No generated folder found.")
 
 with col2:
-    if os.path.exists("generated/client/index.html"):
-        if st.button("🌐 Open Website in New Tab"):
-            webbrowser.open_new_tab("generated/client/index.html")
-    else:
-        st.info("No website found to preview.")
+    if st.button("🌐 Open Website in New Tab"):
+        st.info("Starting development server...")
+        with st.spinner("Running..."):
+            response = handle_input("Start development server")
+            st.write(f"**[{response['step']}]**: {response['content']}")
+        
+        # You can optionally set a frontend path based on the project structure
+        frontend_path = "http://localhost:5173"  # Assuming Vite dev server
+        webbrowser.open_new_tab(frontend_path)
 
 # Form for prompt input
 with st.form("prompt_form"):
@@ -49,10 +53,13 @@ if submitted and user_input:
 
         # Create temporary zip
         temp_dir = tempfile.gettempdir()
-        zip_path = zip_project(output_dir=temp_dir)
+        zip_path = zip_project(folder="generated", output_dir=temp_dir)
+        st.success("Website generation complete!")
 
-        with open(zip_path, "rb") as file:
-            st.success("✅ Website generated successfully!")
-            if st.download_button("📦 Download Website ZIP", file, file_name="generated_site.zip", mime="application/zip"):
-                st.info("Cleaning up ZIP file...")
-                delete_file(zip_path)
+        with open(zip_path, "rb") as f:
+            st.download_button(
+                label="📦 Download Website ZIP",
+                data=f,
+                file_name=os.path.basename(zip_path),
+                mime="application/zip"
+            )
