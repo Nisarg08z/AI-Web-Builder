@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import webbrowser
 import tempfile
 from ai_agent import handle_input
 from utils.file_utils import delete_generated_content, zip_project
