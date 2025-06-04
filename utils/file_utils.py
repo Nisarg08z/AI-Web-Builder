@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import shutil
+import subprocess
 
 def save_file(path: str, content: str):
     filepath = Path(path)
@@ -23,3 +24,15 @@ def delete_project(project_name: str):
     except Exception as e:
         print(f"Error deleting project folder: {e}")
         return False
+
+def is_react_project(project_path: str):
+    return os.path.exists(os.path.join(project_path, "package.json")) and \
+           os.path.exists(os.path.join(project_path, "src"))
+
+def build_react_project(project_path: str):
+    try:
+        subprocess.run(["npm", "install"], cwd=project_path, check=True)
+        subprocess.run(["npm", "run", "build"], cwd=project_path, check=True)
+        return True, "React project built and ready."
+    except subprocess.CalledProcessError as e:
+        return False, f"❌ Build failed: {e}"
