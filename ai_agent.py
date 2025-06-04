@@ -336,7 +336,7 @@ def handle_input(query: str):
             return {"step": "plan", "content": content}
 
         elif step == "action":
-            tool_name = parsed_response.get("function") or parsed_response.get("content")
+            tool_name = parsed_response.get("tool") or parsed_response.get("content")
             tool_input = parsed_response.get("input")
             if tool_name in available_tools:
                 output = available_tools[tool_name](tool_input)
