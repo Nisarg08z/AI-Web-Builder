@@ -25,8 +25,8 @@ def write_file(data: str):
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        # Track last project name
-        project_root = path.split(os.sep)
+        project_root = path.replace("\\", "/").split("/")
+
         if "generated" in project_root:
             index = project_root.index("generated")
             if len(project_root) > index + 1:
@@ -35,6 +35,7 @@ def write_file(data: str):
         return f"File written to {path}"
     except Exception as e:
         return f"[ERROR writing file]: {e}"
+
 
 def get_last_project_name():
     return current_project.get("name")

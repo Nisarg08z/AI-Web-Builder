@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import tempfile
+import streamlit.components.v1 as components
+
 from ai_agent import handle_input, get_last_project_name
 from utils.file_utils import delete_project, zip_project
 
@@ -10,7 +12,25 @@ st.title("🛠️ AI-Powered Website Builder")
 if "last_project" not in st.session_state:
     st.session_state.last_project = None
 
+def render_static_site(project_name):
+    project_path = os.path.join("generated", project_name)
+    possible_paths = [
+        os.path.join(project_path, "index.html"),
+        os.path.join(project_path, "dist", "index.html"),
+        os.path.join(project_path, "build", "index.html"),
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                html = f.read()
+                components.html(html, height=800, scrolling=True)
+            return
+
+    st.warning("No index.html or build output found to preview.")
+
 col1, col2 = st.columns([1, 1])
+
 with col1:
     if st.button("🗑️ Delete Recent Project"):
         if st.session_state.last_project and delete_project(st.session_state.last_project):
@@ -20,14 +40,12 @@ with col1:
             st.warning("No recent project to delete or error occurred.")
 
 with col2:
-    if st.button("🌐 Open Website in New Tab"):
+    if st.button("🌐 Preview Website"):
         if st.session_state.last_project:
-            st.info("Starting development server...")
-            with st.spinner("Running..."):
-                response = handle_input(f"Start development server for {st.session_state.last_project}")
-                st.write(f"**[{response['step']}]**: {response['content']}")
+            st.info("Rendering website preview...")
+            render_static_site(st.session_state.last_project)
         else:
-            st.warning("No recent project found to run.")
+            st.warning("No recent project found to preview.")
 
 with st.form("prompt_form"):
     user_input = st.text_area("Enter your website idea or request", height=200)
@@ -48,7 +66,6 @@ if submitted and user_input:
 
     st.success("Website generation complete!")
 
-    # Track recent project
     project_name = get_last_project_name()
     st.session_state.last_project = project_name
 
